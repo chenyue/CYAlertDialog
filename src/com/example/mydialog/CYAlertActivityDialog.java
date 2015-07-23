@@ -1,7 +1,5 @@
 package com.example.mydialog;
 
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -11,40 +9,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
-import android.view.animation.AccelerateInterpolator;
-import android.view.animation.DecelerateInterpolator;
 
-public class CYAlertActivityDialog extends Activity implements DialogInterface {
+public class CYAlertActivityDialog extends Activity implements DialogInterface, CYDialogDismissListener {
     /** 主对话框 */
-    private View mMainPanel;
+    private CYWorkspace mWorkspace;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.alert_dialog);
-        mMainPanel = findViewById(R.id.main_panel);
-        Builder builder = Builder.getBuilder();
-        inAnimation(mMainPanel);
-    }
-    
-    private void inAnimation(View mainPanel) {
-        mainPanel.setVisibility(View.VISIBLE);
-        final AnimatorSet set = new AnimatorSet();
-        ObjectAnimator anim = ObjectAnimator.ofFloat(mainPanel, "translationY", -100, 0);
-        anim.setInterpolator(new AccelerateInterpolator());
-        anim.setDuration(800);
-        ObjectAnimator anim1 = ObjectAnimator.ofFloat(mainPanel, "translationX", -100, 0);
-        anim1.setInterpolator(new AccelerateInterpolator());
-        anim1.setDuration(800);
-        ObjectAnimator anim2 = ObjectAnimator.ofFloat(mainPanel, "translationY", -20);
-        anim2.setInterpolator(new DecelerateInterpolator());
-        anim2.setDuration(200);
-        ObjectAnimator anim3 = ObjectAnimator.ofFloat(mainPanel, "translationY", 0);
-        anim3.setInterpolator(new AccelerateInterpolator());
-        anim3.setDuration(200);
-        set.play(anim).with(anim1).before(anim2);
-        set.play(anim2).before(anim3);
-        
-        set.start();
+        mWorkspace = (CYWorkspace) findViewById(R.id.workspace);
+        mWorkspace.setCYListener(this);
     }
     
     @Override
@@ -126,6 +100,9 @@ public class CYAlertActivityDialog extends Activity implements DialogInterface {
         }
     }
 
+    public void close() {
+        finish();
+    }
     @Override
     public void cancel() {
         // TODO Auto-generated method stub
@@ -135,5 +112,10 @@ public class CYAlertActivityDialog extends Activity implements DialogInterface {
     @Override
     public void dismiss() {
         
+    }
+
+    @Override
+    public void onClose() {
+        this.finish();
     }
 }
