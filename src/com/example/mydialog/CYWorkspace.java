@@ -6,7 +6,6 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -15,9 +14,11 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.TranslateAnimation;
 import android.widget.FrameLayout;
 import android.widget.Scroller;
-import com.CY.CYLogTool.*;
+
+import com.CY.CYLogTool.CYLogUtils;
 
 /**
  * workspace 对话框可以在上面移动的
@@ -36,12 +37,16 @@ public class CYWorkspace extends FrameLayout {
     private CYDialogDismissListener mListener;
     private CYMainPanel mMainPanel;
     private View mRoot;
-    private int sum = 0;
+    private int mSumUp = 0;
+    private int mSumDown = 0;
     /**  */
     private static final int TOUCH_STATE_SCROLLING_DOWN = 0;
 
     /**  */
     private static final int TOUCH_STATE_SCROLLING_UP = 1;
+
+    /**  */
+    private static final int TOUCH_STATE_CLICK = 2;
 
     /**  */
     private int mTouchState = TOUCH_STATE_SCROLLING_DOWN;
@@ -133,6 +138,18 @@ public class CYWorkspace extends FrameLayout {
     // getChildAt(i).layout(middleX - width / 2, middleY - height / 2, middleX + width / 2, middleY + height / 2);
     // }
     // }
+    @Override
+    public boolean onInterceptTouchEvent(MotionEvent ev) {
+        int action = ev.getAction();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+                return false;
+            default:
+                break;
+
+        }
+        return super.onInterceptTouchEvent(ev);
+    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -148,40 +165,48 @@ public class CYWorkspace extends FrameLayout {
                     mScroller.forceFinished(true);
                 }
                 mLastY = y;
+                mTouchState = TOUCH_STATE_CLICK;
+                CYLogUtils.fullLogE(this.getClass(), "touchstate", mTouchState);
                 break;
             case MotionEvent.ACTION_MOVE:
                 detalY = (int) (y - mLastY);
-                if (detalY > 0) {
-                    int diff = -detalY;
-                    scrollBy(0, (int) (0.1 * diff)); // down
-                    mTouchState = TOUCH_STATE_SCROLLING_DOWN;
-                } else {
-                    int diff = -detalY;
-                    scrollBy(0, (int) (0.005 * diff)); // up
-                    mTouchState = TOUCH_STATE_SCROLLING_UP;
-                    sum += 0.005 * diff;
+                if (Math.abs(detalY) > 10) {
+                    if (detalY > 0) {
+                        int diff = -detalY;
+                        scrollBy(0, (int) (0.1 * diff)); // down
+                        mTouchState = TOUCH_STATE_SCROLLING_DOWN;
+                        mSumDown += 0.1 * diff;
+                    } else {
+                        int diff = -detalY;
+                        scrollBy(0, (int) (0.005 * diff)); // up
+                        mTouchState = TOUCH_STATE_SCROLLING_UP;
+                        mSumUp += 0.005 * diff;
+                    }
                 }
-                // int diff = Math.abs(detalY);
-                // if (detalY > 0) {
-                // diff = -diff;
-                // }
-                // if (Math.abs(diff) >= 1) {
-                // scrollBy(0, (int) (0.1 * diff));
-                Log.e("upupup", "up distance:" + sum + " " + (y - mLastY));
-                CYLogUtils.fullLogE(this.getClass(), "up distance", sum, "start-end", (y - mLastY));
-                // }
                 break;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 final VelocityTracker velocityTracker = mVelocity;
                 velocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
+                int vY = (int) velocityTracker.getYVelocity();
+                if (vY > 6000) {
+                    exitAnimation();
+                }
                 if (mVelocity != null) {
                     mVelocity.recycle();
                     mVelocity = null;
                 }
                 if (mTouchState == TOUCH_STATE_SCROLLING_UP) {
-                    doAnimation(mMainPanel, sum);
+                    doAnimation(mMainPanel, mSumUp);
+                } else if (mTouchState == TOUCH_STATE_CLICK) {
+                    exitAnimation();
                 }
+                int height = getResources().getDisplayMetrics().heightPixels;
+                int panely = (int) mMainPanel.getY();
+                if (Math.abs(mSumDown) > (height - panely)) {
+                    mListener.onClose();
+                }
+                CYLogUtils.fullLogE(this.getClass(), "touchstate2", mTouchState, "mSumDown", mSumDown);
                 break;
             default:
                 break;
@@ -189,11 +214,16 @@ public class CYWorkspace extends FrameLayout {
         return true;
     }
 
-    private void doAnimation(CYMainPanel targetView, float detal) {
-        ObjectAnimator anim1 = ObjectAnimator.ofFloat(targetView, "translationY", 0, -detal);
+    private void exitAnimation() {
+        int end = getResources().getDisplayMetrics().heightPixels;
+        ObjectAnimator anim1 = ObjectAnimator.ofFloat(mMainPanel, "translationY", 0, end);
         anim1.setInterpolator(new AccelerateInterpolator());
-        anim1.setDuration(500);
-        anim1.start();
+        anim1.setDuration(300);
+        ObjectAnimator anim2 = ObjectAnimator.ofFloat(mMainPanel, "translationX", 0, -50);
+        anim2.setInterpolator(new AccelerateInterpolator());
+        anim2.setDuration(300);
+        AnimatorSet set = new AnimatorSet();
+        set.play(anim1).with(anim2);
         anim1.addListener(new AnimatorListener() {
 
             @Override
@@ -208,15 +238,47 @@ public class CYWorkspace extends FrameLayout {
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                sum = 0;
+                mListener.onClose();
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
-                // TODO Auto-generated method stub
 
             }
         });
+        set.start();
+    }
+
+    private void doAnimation(CYMainPanel targetView, float detal) {
+        TranslateAnimation anim1 = new TranslateAnimation(0, 0, 0, detal);
+        
+        // TranslateAnimation anim1 = ObjectAnimator.ofFloat(this, "translationY", 0, detal);
+        // anim1.setInterpolator(new AccelerateInterpolator());
+        // anim1.setDuration(500);
+        // anim1.start();
+        // anim1.addListener(new AnimatorListener() {
+        //
+        // @Override
+        // public void onAnimationStart(Animator animation) {
+        //
+        // }
+        //
+        // @Override
+        // public void onAnimationRepeat(Animator animation) {
+        //
+        // }
+        //
+        // @Override
+        // public void onAnimationEnd(Animator animation) {
+        // sum = 0;
+        // }
+        //
+        // @Override
+        // public void onAnimationCancel(Animator animation) {
+        // // TODO Auto-generated method stub
+        //
+        // }
+        // });
     }
 
     // private boolean isCanMoveUp(int detalY2) {
