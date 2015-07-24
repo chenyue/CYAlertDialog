@@ -17,6 +17,7 @@ import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
 import android.widget.Scroller;
+import com.CY.CYLogTool.*;
 
 /**
  * workspace 对话框可以在上面移动的
@@ -166,7 +167,8 @@ public class CYWorkspace extends FrameLayout {
                 // }
                 // if (Math.abs(diff) >= 1) {
                 // scrollBy(0, (int) (0.1 * diff));
-                 Log.e("upupup", "up distance:" + sum + " " + (y-mLastY));
+                Log.e("upupup", "up distance:" + sum + " " + (y - mLastY));
+                CYLogUtils.fullLogE(this.getClass(), "up distance", sum, "start-end", (y - mLastY));
                 // }
                 break;
             case MotionEvent.ACTION_UP:
@@ -193,26 +195,26 @@ public class CYWorkspace extends FrameLayout {
         anim1.setDuration(500);
         anim1.start();
         anim1.addListener(new AnimatorListener() {
-            
+
             @Override
             public void onAnimationStart(Animator animation) {
-                
+
             }
-            
+
             @Override
             public void onAnimationRepeat(Animator animation) {
-                
+
             }
-            
+
             @Override
             public void onAnimationEnd(Animator animation) {
                 sum = 0;
             }
-            
+
             @Override
             public void onAnimationCancel(Animator animation) {
                 // TODO Auto-generated method stub
-                
+
             }
         });
     }
